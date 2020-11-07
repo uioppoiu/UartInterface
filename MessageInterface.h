@@ -25,7 +25,11 @@ namespace UartMessageInterface
         SensorCO2,
         SensorHumidity,
         SensorConductivity,
+        SensorInvalid,
     } eSensorType;
+
+    eSensorType strSensor(const char *input);
+    string strSensor(eSensorType input);
 
     typedef enum
     {
@@ -39,7 +43,8 @@ namespace UartMessageInterface
     {
         GetSensor = 0,
         GetControl,
-        SetControl
+        SetControl,
+        GetDateTime,
     } eCommandType;
 
     class UartMessageCallbackManagement
@@ -90,9 +95,19 @@ namespace UartMessageInterface
             child->SetAttribute("NAME", name.c_str());
             child->SetAttribute("VALUE", value);
             _command->InsertEndChild(child);
+
+            const XMLAttribute *count = _command->FindAttribute("COUNT");
+            if (count == NULL)
+            {
+                _command->SetAttribute("COUNT", 1);
+            }
+            else
+            {
+                _command->SetAttribute("COUNT", count->UnsignedValue() + 1);
+            }
         }
 
-        void sendMessage();
+        string sendMessage();
 
     private:
         XMLDocument _xmlDoc;
@@ -100,7 +115,14 @@ namespace UartMessageInterface
         UartSensorMessage();
     };
 
+    bool isUartMessage(const string& message);
     void processUartMessage(const string &message);
+   
+    void handleRequestMessage(const XMLNode* root);
+    void dispatchRequestGenSensor(const XMLElement *elem);
+
+    
+    void handleResponseMessage(const XMLNode* root);
 
 }; // namespace UartMessageInterface
 
