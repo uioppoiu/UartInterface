@@ -1,82 +1,66 @@
 #include <iostream>
-#include "MessageInterface.h"
+#include "UartMessageSender.h"
+#include "UartMessageReceiver.h"
 #include "tinyxml2.h"
 
 using namespace tinyxml2;
 using namespace UartMessageInterface;
 
+void onRequestTemp1(eDataType type, const string &name)
+{
+    cout << __FUNCTION__ << endl;
+    cout << type << endl;
+    cout << name << endl;
+}
+
+void onRequestTemp2(eDataType type, const string &name)
+{
+    cout << __FUNCTION__ << endl;
+    cout << type << endl;
+    cout << name << endl;
+}
+
+void onResponseTemp1(eDataType type, const string &name, const Value &value)
+{
+    cout << __FUNCTION__ << endl;
+    cout << type << endl;
+    cout << name << endl;
+    cout << value.type << endl;
+    cout << value.value.val_double << endl;
+}
+
+void onResponseTemp2(eDataType type, const string &name, const Value &value)
+{
+    cout << __FUNCTION__ << endl;
+    cout << type << endl;
+    cout << name << endl;
+    cout << value.type << endl;
+    cout << value.value.val_int << endl;
+}
+
 int main(int, char **)
 {
-    // XMLDocument xmlDocWrite;
-    // XMLNode *root = xmlDocWrite.NewElement("MESSAGE");
-    // xmlDocWrite.InsertFirstChild(root);
-
-    // XMLElement *timestamp = xmlDocWrite.NewElement("TIMESTAMP");
-    // timestamp->SetText(UartMessageInterface::getCurrentTime().c_str());
-    // root->InsertEndChild(timestamp);
-
-    // XMLElement *status = xmlDocWrite.NewElement("STATUS");
-    // root->InsertEndChild(status);
-
-    // XMLElement *temp_room = status->InsertNewChildElement("TEMPERATURE");
-    // temp_room->SetAttribute("NAME", "ROOM");
-    // temp_room->SetAttribute("VALUE", 25.5);
-
-    // XMLElement *temp_water = status->InsertNewChildElement("TEMPERATURE");
-    // temp_water->SetAttribute("NAME", "WATER");
-    // temp_water->SetAttribute("VALUE", 19.9);
-
-    // XMLElement *humidity = status->InsertNewChildElement("HUMIDITY");
-    // humidity->SetAttribute("NAME", "SENSOR1");
-    // humidity->SetAttribute("VALUE", 35);
-
-    // XMLElement *co2 = status->InsertNewChildElement("CO2");
-    // co2->SetAttribute("NAME", "SENSOR2");
-    // co2->SetAttribute("VALUE", 40);
-
-    // XMLElement *conductivity = status->InsertNewChildElement("CONDUCTIVITY");
-    // conductivity->SetAttribute("NAME", "SENSOR3");
-    // conductivity->SetAttribute("VALUE", 45);
-
-    // XMLElement *control = xmlDocWrite.NewElement("CONTROL");
-    // root->InsertEndChild(control);
-
-    // XMLElement *valve1 = control->InsertNewChildElement("VALVE");
-    // valve1->SetAttribute("NAME", "POINT1");
-    // valve1->SetAttribute("VALUE", true);
-
-    // XMLElement *valve2 = control->InsertNewChildElement("VALVE");
-    // valve2->SetAttribute("NAME", "POINT2");
-    // valve2->SetAttribute("VALUE", false);
-
-    // xmlDocWrite.SaveFile("test.xml");
-
-    // XMLPrinter xmlPrint;
-    // xmlDocWrite.Print(&xmlPrint);
-
-    // string buf = xmlPrint.CStr();
-
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     buf.push_back('A' + i);
-    //     appendCheckSum(buf);
-    //     bool result = verityCheckSum(buf);
-    // }
-
-    UartSensorMessage reqTemp(123, Request, GetSensor);
+    UartMessageSender reqTemp(Request, Get);
     reqTemp.appendRequest(SensorTemperature, "ROOM");
     reqTemp.appendRequest(SensorTemperature, "WATER");
     string msgReq = reqTemp.sendMessage();
 
-    processUartMessage(msgReq);
+    UartMessageCallbackManagement::registerRequestGetCallBack(SensorTemperature, "ROOM", onRequestTemp1);
+    UartMessageCallbackManagement::registerRequestGetCallBack(SensorTemperature, "WATER", onRequestTemp1);
 
+    UartMessageReceiver rcvReq(msgReq);
+    rcvReq.processMessage();
 
-    UartSensorMessage rspTemp(123, Response, GetSensor);
-    rspTemp.appendResponse(SensorTemperature, "ROOM", 25.5);
-    rspTemp.appendResponse(SensorTemperature, "WATER", 19.0);
+    UartMessageSender rspTemp(Response, Get);
+    rspTemp.appendResponse(SensorTemperature, "ROOM", 25.5, Double);
+    rspTemp.appendResponse(SensorTemperature, "WATER", 19.0, Integer);
     string msgRsp = rspTemp.sendMessage();
 
-    processUartMessage(msgRsp);
+    UartMessageCallbackManagement::registerResponseGetCallBack(SensorTemperature, "ROOM", onResponseTemp2);
+    UartMessageCallbackManagement::registerResponseGetCallBack(SensorTemperature, "WATER", onResponseTemp2);
+
+    UartMessageReceiver rcvRsp(msgReq);
+    rcvRsp.processMessage();
 
     return 0;
 }

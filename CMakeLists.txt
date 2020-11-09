@@ -4,7 +4,10 @@ project(UART VERSION 0.1.0)
 add_executable(UART
     main.cpp
     tinyxml2/tinyxml2.h tinyxml2/tinyxml2.cpp
-    MessageInterface.h MessageInterface.cpp)
+    UartMessageInterface.h UartMessageInterface.cpp
+    UartMessageCallbackManagement.h UartMessageCallbackManagement.cpp
+    UartMessageReceiver.h UartMessageReceiver.cpp
+    UartMessageSender.h UartMessageSender.cpp)
 
 include_directories(tinyxml2)
 
