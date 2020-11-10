@@ -58,10 +58,6 @@ namespace UartMessageInterface
         cout << "REQUEST Message arrived" << endl;
 
         const XMLElement *command = root->FirstChildElement();
-        const uint32_t count = command->UnsignedAttribute("COUNT");
-        if (count == 0)
-            return;
-
         if (string(command->Value()) == string("GET"))
         {
             XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
@@ -129,10 +125,6 @@ namespace UartMessageInterface
         cout << "RESPONSE/NOTIFICATION Message arrived" << endl;
 
         const XMLElement *command = root->FirstChildElement();
-        const uint32_t count = command->UnsignedAttribute("COUNT");
-        if (count == 0)
-            return;
-
         if (string(command->Value()) == string("GET"))
         {
             XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());

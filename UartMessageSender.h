@@ -62,16 +62,6 @@ namespace UartMessageInterface
             }
 
             _command->InsertEndChild(child);
-
-            const XMLAttribute *count = _command->FindAttribute("COUNT");
-            if (count == NULL)
-            {
-                _command->SetAttribute("COUNT", 1);
-            }
-            else
-            {
-                _command->SetAttribute("COUNT", count->UnsignedValue() + 1);
-            }
         }
 
         // Subscribe
