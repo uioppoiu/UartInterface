@@ -1,230 +1,116 @@
-#include <iostream>
+#include "Arduino.h"
 #include "UartMessageSender.h"
-
-using namespace std;
+#include "UartEndian.h"
 
 namespace UartMessageInterface
 {
-    UartMessageSender::UartMessageSender(eMessageType messageType, eCommandType commandType)
-        : _seqId(0), _command(NULL)
-    {
-        XMLElement *root = NULL;
-        switch (messageType)
-        {
-        case Request:
-            root = _xmlDoc.NewElement("REQUEST");
-            break;
-        case Response:
-            root = _xmlDoc.NewElement("RESPONSE");
-            break;
-        case Notification:
-            root = _xmlDoc.NewElement("NOTIFICATION");
-            break;
-        case Acknowledge:
-            root = _xmlDoc.NewElement("ACKNOWLEDGE");
-            break;
-        default:
-            throw invalid_argument("Invalid MessageType");
-        }
-        _xmlDoc.InsertFirstChild(root);
 
-        switch (commandType)
-        {
-        case Get:
-            _command = _xmlDoc.NewElement("GET");
-            break;
-        case Set:
-            _command = _xmlDoc.NewElement("SET");
-            break;
-        case Subscribe:
-            _command = _xmlDoc.NewElement("SUBSCRIBE");
-            break;
-        case Unsubscribe:
-            _command = _xmlDoc.NewElement("UNSUBSCRIBE");
-            break;
-        default:
-            throw invalid_argument("Invalid CommandType");
-        }
-        root->InsertEndChild(_command);
+    UartMessageSender::UartMessageSender(const unsigned char msgId)
+        : _header((MsgCommonHeader *)_messageBuffer)
+    {
+        memset(_messageBuffer, 0x00, sizeof(_messageBuffer));
+        _header->msgId = msgId;
+        _header->msgSize = sizeof(MsgCommonHeader);
     }
 
-    void UartMessageSender::appendRequestAll(eDataType type)
+    UartMessageSender::~UartMessageSender()
     {
-        if (type != SensorAll || type != ControlAll)
-            return;
-
-        _command->DeleteChildren();
-
-        if (type == SensorAll)
-            _command->SetText("SENSOR_ALL");
-        if (type == ControlAll)
-            _command->SetText("CONTROL_ALL");
     }
 
-    void UartMessageSender::appendRequest(eDataType dataType, const string &name)
+    void UartMessageSender::setSeqId(uint32_t seqId)
     {
-        XMLElement *child = NULL;
-        switch (dataType)
-        {
-        case SensorTemperature:
-            child = _xmlDoc.NewElement("TEMPERATURE");
-            break;
-        case SensorCO2:
-            child = _xmlDoc.NewElement("CO2");
-            break;
-        case SensorHumidity:
-            child = _xmlDoc.NewElement("HUMIDITY");
-            break;
-        case SensorConductivity:
-            child = _xmlDoc.NewElement("CONDUCTIVITY");
-            break;
-        case Control1:
-            child = _xmlDoc.NewElement("CONTROL1");
-            break;
-        case Control2:
-            child = _xmlDoc.NewElement("CONTROL2");
-            break;
-        case DateTime:
-            child = _xmlDoc.NewElement("DATETIME");
-            break;
-        case SensorAll:
-        case ControlAll:
-            appendRequestAll(dataType);
-            return;
-        default:
-            return;
-        }
-
-        child->SetAttribute("NAME", name.c_str());
-        _command->InsertEndChild(child);
+        _header->seqId = htonl(seqId);
     }
 
-    void UartMessageSender::appendSubscribe(eDataType type, const string &name, uint32_t period)
+    void UartMessageSender::sendMessage()
     {
-        XMLElement *child = NULL;
-        switch (type)
-        {
-        case SensorTemperature:
-            child = _xmlDoc.NewElement("TEMPERATURE");
-            break;
-        case SensorCO2:
-            child = _xmlDoc.NewElement("CO2");
-            break;
-        case SensorHumidity:
-            child = _xmlDoc.NewElement("HUMIDITY");
-            break;
-        case SensorConductivity:
-            child = _xmlDoc.NewElement("CONDUCTIVITY");
-            break;
-        case Control1:
-            child = _xmlDoc.NewElement("CONTROL1");
-            break;
-        case Control2:
-            child = _xmlDoc.NewElement("CONTROL2");
-            break;
-        case DateTime:
-            child = _xmlDoc.NewElement("DATETIME");
-            break;
-        case SensorAll:
-        case ControlAll:
-            appendSubscribeAll(type, period);
-            return;
-        default:
-            return;
-        }
+        uint8_t checkSum = getCheckSum(_messageBuffer, _header->msgSize);
+        _messageBuffer[_header->msgSize] = checkSum;
+        _header->msgSize += 1;
 
-        child->SetAttribute("NAME", name.c_str());
-        child->SetAttribute("PERIOD", period);
-        _command->InsertEndChild(child);
+        Serial.write("<BEGIN>");
+        Serial.write(_messageBuffer, _header->msgSize);
+        Serial.write("<END>");
+
+        Serial.flush();
     }
 
-    void UartMessageSender::appendSubscribeAll(eDataType type, uint32_t period)
+    void UartMessageSender::appendRequestGetDataCommon(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        if (type != SensorAll || type != ControlAll)
-            return;
+        RequestGetData data;
+        memset(&data, 0x00, sizeof(RequestGetData));
 
-        _command->DeleteChildren();
+        data.type = dataType;
 
-        XMLElement *child = NULL;
-        if (type == SensorAll)
-            child = _xmlDoc.NewElement("SENSOR_ALL");
-        else if (type == ControlAll)
-            child = _xmlDoc.NewElement("CONTROL_ALL");
+        memset(data.name, 0x00, sizeof(data.name));
+        size_t strSize = (sizeOfName > sizeof(data.name)) ? (sizeof(data.name)) : sizeOfName;
+        memcpy(data.name, name, strSize);
 
-        child->SetAttribute("PERIOD", period);
-
-        _command->InsertEndChild(child);
+        appendData(data);
     }
 
-    void UartMessageSender::appendUnsubscribe(eDataType type, const string &name)
+    void UartMessageSender::appendRequestGetData(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        XMLElement *child = NULL;
-        switch (type)
-        {
-        case SensorTemperature:
-            child = _xmlDoc.NewElement("TEMPERATURE");
-            break;
-        case SensorCO2:
-            child = _xmlDoc.NewElement("CO2");
-            break;
-        case SensorHumidity:
-            child = _xmlDoc.NewElement("HUMIDITY");
-            break;
-        case SensorConductivity:
-            child = _xmlDoc.NewElement("CONDUCTIVITY");
-            break;
-        case Control1:
-            child = _xmlDoc.NewElement("CONTROL1");
-            break;
-        case Control2:
-            child = _xmlDoc.NewElement("CONTROL2");
-            break;
-        case DateTime:
-            child = _xmlDoc.NewElement("DATETIME");
-            break;
-        case SensorAll:
-        case ControlAll:
-            appendUnsubscribeAll(type);
+        if (_header->msgId != UartMessageInterface::MsgId::RequestGet)
             return;
-        default:
-            return;
-        }
 
-        child->SetAttribute("NAME", name.c_str());
-        _command->InsertEndChild(child);
+        appendRequestGetDataCommon(dataType, name, sizeOfName);
     }
 
-    void UartMessageSender::appendUnsubscribeAll(eDataType type)
+    void UartMessageSender::appendSubscribeData(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        if (type != SensorAll || type != ControlAll)
+        if (_header->msgId != UartMessageInterface::MsgId::Subscribe)
             return;
 
-        _command->DeleteChildren();
-
-        XMLElement *child = NULL;
-        if (type == SensorAll)
-            child = _xmlDoc.NewElement("SENSOR_ALL");
-        else if (type == ControlAll)
-            child = _xmlDoc.NewElement("CONTROL_ALL");
-
-        _command->InsertEndChild(child);
+        appendRequestGetDataCommon(dataType, name, sizeOfName);
     }
 
-    string UartMessageSender::sendMessage()
+    void UartMessageSender::appendUnsubscribeData(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        // Add SEQUENCE ID (ROOT에 attribute 있으면 안됨)
-        // XMLElement *root = _xmlDoc.RootElement();
-        // root->SetAttribute("SEQUENCE ID", _seqId);
+        if (_header->msgId != UartMessageInterface::MsgId::Unsubscribe)
+            return;
 
-        XMLPrinter xmlPrint;
-        _xmlDoc.Print(&xmlPrint);
-        string buf = xmlPrint.CStr();
-        appendCheckSum(buf);
+        appendRequestGetDataCommon(dataType, name, sizeOfName);
+    }
 
-        // Serial.println(buf);
-        cout << buf << endl;
+    void UartMessageSender::appendResponseGetDataCommon(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
+    {
+        ResponseGetData data;
+        memset(&data, 0x00, sizeof(ResponseGetData));
 
-        return buf;
+        data.type = dataType;
+
+        memset(data.name, 0x00, sizeof(data.name));
+        size_t strSize = (sizeOfName > sizeof(data.name)) ? (sizeof(data.name)) : sizeOfName;
+        memcpy(data.name, name, strSize);
+
+        data.value = htonl(value);
+
+        appendData(data);
+    }
+
+    void UartMessageSender::appendResponseGetData(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
+    {
+        if (_header->msgId != UartMessageInterface::MsgId::ResponseGet)
+            return;
+
+        appendResponseGetDataCommon(dataType, name, sizeOfName, value);
+    }
+
+    void UartMessageSender::appendNotificationData(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
+    {
+        if (_header->msgId != UartMessageInterface::MsgId::Notification)
+            return;
+
+        appendResponseGetDataCommon(dataType, name, sizeOfName, value);
+    }
+
+    void UartMessageSender::appendRequestSetData(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
+    {
+        if (_header->msgId != UartMessageInterface::MsgId::RequestSet)
+            return;
+
+        appendResponseGetDataCommon(dataType, name, sizeOfName, value);
     }
 
 }; // namespace UartMessageInterface

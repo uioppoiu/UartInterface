@@ -1,163 +1,75 @@
-#include <iostream>
 #include "UartMessageReceiver.h"
-
-using namespace std;
+#include "UartEndian.h"
 
 namespace UartMessageInterface
 {
-    UartMessageReceiver::UartMessageReceiver(const string &message)
+    UartMessageReceiver::UartMessageReceiver(const uint8_t* msg, size_t msgSize)
     {
-        if (isUartMessage(message) == false)
-        {
-            throw invalid_argument("This message is not Uart message");
-        }
-
-        if (verityCheckSum(message) == false)
-        {
-            throw invalid_argument("CheckSum error");
-        }
-
-        int32_t retVal = _xmlDoc.Parse(message.c_str(), message.size() - 1);
-        if(retVal != XML_SUCCESS)
-        {
-            throw invalid_argument("Parsing error");
-        }
-
-        // XMLPrinter xmlPrint;
-        // _xmlDoc.Print(&xmlPrint);
-        // string buf = xmlPrint.CStr();
-        // cout << buf << endl;
+        memcpy(_message, msg, msgSize);
+        // if (verityCheckSum(message) == false) throw;
     }
 
-    bool UartMessageReceiver::isMessageValid()
+    UartMessageReceiver::~UartMessageReceiver()
     {
-        return true; // TODO 내용 검사
-    }
-
-    bool UartMessageReceiver::isUartMessage(const string &message)
-    {
-        return true; // TODO
     }
 
     void UartMessageReceiver::processMessage()
     {
-        const XMLElement *root = _xmlDoc.RootElement();
-        if (string(root->Name()) == string("REQUEST"))
-        {
-            handleRequestMessage(root);
-        }
-        else if ((string(root->Name()) == string("RESPONSE")) ||
-                 (string(root->Name()) == string("NOTIFICATION")))
-        {
-            handleResponseMessage(root);
-        }
-    }
+        const MsgCommonHeader *msgHeader = (const MsgCommonHeader *)_message;
+        const uint8_t msgId = msgHeader->msgId; // 메시지 ID
+        const uint32_t seqId = ntohl(msgHeader->seqId);
+        const uint8_t numOfData = msgHeader->numOfData; // 데이터의 수
 
-    void UartMessageReceiver::handleRequestMessage(const XMLElement *root)
-    {
-        cout << "REQUEST Message arrived" << endl;
+        Serial.print("MsgId:0x");
+        Serial.print(msgId,16);
+        Serial.print(" SeqId:");
+        Serial.println(seqId);
 
-        const XMLElement *command = root->FirstChildElement();
-        if (string(command->Value()) == string("GET"))
+        switch (msgId)
         {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
-            {
-                invokeRequestGet(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
-            }
-        }
-        if (string(command->Value()) == string("SUBSCRIBE"))
+        case MsgId::RequestGet:
         {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
-            {
-                invokeSubscribe(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
-            }
+            const RequestGetData *dataArr = (const RequestGetData *)(_message + sizeof(MsgCommonHeader));
+            UartMessageCallbackManagement::invokeRequestGetCallBack(seqId, dataArr, numOfData);
         }
-        if (string(command->Value()) == string("UNSUBSCRIBE"))
+        break;
+        case MsgId::RequestSet:
         {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
-            {
-                invokeRequestGet(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
-            }
+            const RequestSetData *dataArr = (const RequestSetData *)(_message + sizeof(MsgCommonHeader));
+            UartMessageCallbackManagement::invokeRequestSetCallBack(seqId, dataArr, numOfData);
         }
-    }
-
-    void UartMessageReceiver::invokeRequestGet(const XMLElement *element)
-    {
-        if (element == NULL)
+        break;
+        case MsgId::Subscribe:
+        {
+            const SubscribeData *dataArr = (const SubscribeData *)(_message + sizeof(MsgCommonHeader));
+            UartMessageCallbackManagement::invokeSubscribeCallBack(seqId, dataArr, numOfData);
+        }
+        break;
+        case MsgId::Unsubscribe:
+        {
+            const UnsubscribeData *dataArr = (const UnsubscribeData *)(_message + sizeof(MsgCommonHeader));
+            UartMessageCallbackManagement::invokeUnsubscribeCallBack(seqId, dataArr, numOfData);
+        }
+        break;
+        case MsgId::Notification:
+        {
+            const NotificationData *dataArr = (const NotificationData *)(_message + sizeof(MsgCommonHeader));
+            UartMessageCallbackManagement::invokeNotificationCallBack(seqId, dataArr, numOfData);
+        }
+        break;
+        case MsgId::ResponseGet:
+        {
+            const ResponseGetData *dataArr = (const ResponseGetData *)(_message + sizeof(MsgCommonHeader));
+            UartMessageCallbackManagement::invokeResponseGetCallBack(seqId, dataArr, numOfData);
+        }
+        break;
+        case MsgId::Acknowledge:
+        {
+            UartMessageCallbackManagement::invokeAcknowledgeCallBack(seqId, msgId);
+        }
+        break;
+        default:
             return;
-
-        eDataType type = str2EnumDataType(element->Name());
-        string name = element->Attribute("NAME");
-        UartMessageCallbackManagement::invokeRequestGetCallBack(type, name);
-    }
-
-    void UartMessageReceiver::invokeSubscribe(const XMLElement *element)
-    {
-        if (element == NULL)
-            return;
-
-        eDataType dataType = str2EnumDataType(element->Name());
-        string name = element->Attribute("NAME");
-        uint32_t period = element->UnsignedAttribute("PERIOD");
-
-        UartMessageCallbackManagement::invokeSubscribeCallBack(dataType, name, period);
-    }
-
-    void UartMessageReceiver::invokeUnsubscribe(const XMLElement *element)
-    {
-        if (element == NULL)
-            return;
-
-        eDataType dataType = str2EnumDataType(element->Name());
-        string name = element->Attribute("NAME");
-
-        UartMessageCallbackManagement::invokeUnsubscribeCallBack(dataType, name);
-    }
-
-    void UartMessageReceiver::handleResponseMessage(const XMLElement *root)
-    {
-        cout << "RESPONSE/NOTIFICATION Message arrived" << endl;
-
-        const XMLElement *command = root->FirstChildElement();
-        if (string(command->Value()) == string("GET"))
-        {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
-            {
-                invokeResponseGet(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
-            }
         }
     }
-
-    void UartMessageReceiver::invokeResponseGet(const XMLElement *element)
-    {
-        if (element == NULL)
-            return;
-
-        eDataType dataType = str2EnumDataType(element->Name());
-        string name = element->Attribute("NAME");
-        string valueType = element->Attribute("TYPE");
-        if (valueType == "DOUBLE")
-        {
-            Value v;
-            v.type = Double;
-            v.value.val_double = element->DoubleAttribute("VALUE");
-            UartMessageCallbackManagement::invokeResponseGetCallBack(dataType, name, v);
-        }
-        else // if(valueType == "INTEGER")
-        {
-            Value v;
-            v.type = Integer;
-            v.value.val_int = element->UnsignedAttribute("VALUE");
-            UartMessageCallbackManagement::invokeResponseGetCallBack(dataType, name, v);
-        }
-    }
-
 }; // namespace UartMessageInterface

@@ -1,7 +1,4 @@
-#include <iostream>
 #include "UartMessageCallbackManagement.h"
-
-using namespace std;
 
 namespace UartMessageInterface
 {
@@ -16,56 +13,110 @@ namespace UartMessageInterface
         return *_Instance;
     }
 
-    void UartMessageCallbackManagement::registerRequestGetCallBack(eDataType dataType, const string &name, const CallBackRequestGet &func)
+    UartMessageCallbackManagement::UartMessageCallbackManagement()
+        : _callBackRequestGet(NULL),
+          _callBackResponseGet(NULL),
+          _callBackRequestSet(NULL),
+          _callBackSubscribe(NULL),
+          _callBackUnsubscribe(NULL),
+          _callBackNotification(NULL),
+          _callBackAcknowledge(NULL)
     {
-        getInstance()._callBackListRequestGet.insert(make_pair(make_tuple(dataType, name), func));
     }
 
-    void UartMessageCallbackManagement::invokeRequestGetCallBack(eDataType dataType, const string &name)
+    void UartMessageCallbackManagement::registerRequestGetCallBack(const CallBackRequestGet func)
     {
-        map<tuple<eDataType, string>, CallBackRequestGet>::iterator iter =
-            getInstance()._callBackListRequestGet.find(make_tuple(dataType, name));
-
-        if (iter == getInstance()._callBackListRequestGet.end())
-            return;
-
-        iter->second(dataType, name);
+        getInstance()._callBackRequestGet = func;
     }
 
-    void UartMessageCallbackManagement::registerResponseGetCallBack(eDataType dataType, const string &name, const CallBackResponseGet &func)
+    void UartMessageCallbackManagement::invokeRequestGetCallBack(uint32_t seqId, const RequestGetData *dataArr, size_t arrSize)
     {
-        getInstance()._callBackListResponseGet.insert(make_pair(make_tuple(dataType, name), func));
+        if(getInstance()._callBackRequestGet == NULL) return;
+        getInstance()._callBackRequestGet(seqId, dataArr, arrSize);
     }
 
-    void UartMessageCallbackManagement::invokeResponseGetCallBack(eDataType dataType, const string &name, const Value &value)
+    void UartMessageCallbackManagement::registerResponseGetCallBack(const CallBackResponseGet func)
     {
-        map<tuple<eDataType, string>, CallBackResponseGet>::iterator iter =
-            getInstance()._callBackListResponseGet.find(make_tuple(dataType, name));
-
-        if (iter == getInstance()._callBackListResponseGet.end())
-            return;
-
-        iter->second(dataType, name, value);
+        getInstance()._callBackResponseGet = func;
     }
 
-    void UartMessageCallbackManagement::registerSubscribeCallBack(CallBackSubscribe &func)
+    void UartMessageCallbackManagement::invokeResponseGetCallBack(uint32_t seqId, const ResponseGetData *dataArr, size_t arrSize)
+    {
+        if(getInstance()._callBackResponseGet == NULL) return;
+
+        for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+        {
+            UartMessageInterface::readEndian((ResponseGetData *)(dataArr + arrIdx));
+        }
+
+        getInstance()._callBackResponseGet(seqId, dataArr, arrSize);
+    }
+
+    void UartMessageCallbackManagement::registerNotificationCallBack(const CallBackNotification func)
+    {
+        getInstance()._callBackNotification = func;
+    }
+
+    void UartMessageCallbackManagement::invokeNotificationCallBack(uint32_t seqId, const NotificationData *dataArr, size_t arrSize)
+    {
+        if(getInstance()._callBackNotification == NULL) return;
+        
+        for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+        {
+            UartMessageInterface::readEndian((ResponseGetData *)(dataArr + arrIdx));
+        }
+
+        getInstance()._callBackNotification(seqId, dataArr, arrSize);
+    }
+
+    void UartMessageCallbackManagement::registerSubscribeCallBack(const CallBackSubscribe func)
     {
         getInstance()._callBackSubscribe = func;
     }
 
-    void UartMessageCallbackManagement::invokeSubscribeCallBack(eDataType dataType, const string &name, uint32_t period)
+    void UartMessageCallbackManagement::invokeSubscribeCallBack(uint32_t seqId, const SubscribeData *dataArr, size_t arrSize)
     {
-        getInstance()._callBackSubscribe(dataType, name, period);
+        if(getInstance()._callBackSubscribe == NULL) return;
+        getInstance()._callBackSubscribe(seqId, dataArr, arrSize);
     }
 
-    void UartMessageCallbackManagement::registerUnsubscribeCallBack(CallBackUnsubscribe &func)
+    void UartMessageCallbackManagement::registerUnsubscribeCallBack(const CallBackUnsubscribe func)
     {
         getInstance()._callBackUnsubscribe = func;
     }
 
-    void UartMessageCallbackManagement::invokeUnsubscribeCallBack(eDataType dataType, const string &name)
+    void UartMessageCallbackManagement::invokeUnsubscribeCallBack(uint32_t seqId, const UnsubscribeData *dataArr, size_t arrSize)
     {
-        getInstance()._callBackUnsubscribe(dataType, name);
+        if(getInstance()._callBackUnsubscribe == NULL) return;
+        getInstance()._callBackUnsubscribe(seqId, dataArr, arrSize);
+    }
+
+    void UartMessageCallbackManagement::registerRequestSetCallBack(const CallBackRequestSet func)
+    {
+        getInstance()._callBackRequestSet = func;
+    }
+
+    void UartMessageCallbackManagement::invokeRequestSetCallBack(uint32_t seqId, const RequestSetData *dataArr, size_t arrSize)
+    {
+        if(getInstance()._callBackRequestSet == NULL) return;
+        
+        for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+        {
+            UartMessageInterface::readEndian((ResponseGetData *)(dataArr + arrIdx));
+        }
+
+        getInstance()._callBackRequestSet(seqId, dataArr, arrSize);
+    }
+
+    void UartMessageCallbackManagement::registerAcknowledgeCallBack(const CallBackAcknowledge func)
+    {
+        getInstance()._callBackAcknowledge = func;
+    }
+
+    void UartMessageCallbackManagement::invokeAcknowledgeCallBack(uint32_t seqId, unsigned char msgId)
+    {
+        if(getInstance()._callBackAcknowledge == NULL) return;
+        getInstance()._callBackAcknowledge(seqId, msgId);
     }
 
 }; // namespace UartMessageInterface

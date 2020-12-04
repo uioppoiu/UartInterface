@@ -1,67 +1,39 @@
-#include <iostream>
+#include <time.h>
 #include "UartMessageInterface.h"
-
-using namespace std;
+#include "UartEndian.h"
 
 namespace UartMessageInterface
 {
-    eDataType str2EnumDataType(const char *input)
-    {
-        string str(input);
-        if (str == string("SENSOR_ALL"))
-            return SensorAll;
-        if (str == string("TEMPERATURE"))
-            return SensorTemperature;
-        if (str == string("CO2"))
-            return SensorCO2;
-        if (str == string("HUMIDITY"))
-            return SensorHumidity;
-        if (str == string("CONDUCTIVITY"))
-            return SensorConductivity;
-        if (str == string("CONTROL_ALL"))
-            return ControlAll;
-        if (str == string("CONTROL0"))
-            return Control0;
-        if (str == string("CONTROL1"))
-            return Control1;
-        if (str == string("CONTROL2"))
-            return Control2;
-        if (str == string("DATETIME"))
-            return DateTime;
-        return Invalid;
-    }
-
-    string enum2Str(eDataType input)
+    const char* DataTypeStr(const unsigned char input)
     {
         switch (input)
         {
-        case SensorAll:
-            return "SENSOR_ALL";
-        case SensorTemperature:
-            return "TEMPERATURE";
-        case SensorCO2:
+        case DataType::SensorAll:
+            return "SensorAll";
+        case DataType::SensorTemperature:
+            return "Temp";
+        case DataType::SensorCO2:
             return "CO2";
-        case SensorHumidity:
-            return "HUMIDITY";
-        case SensorConductivity:
-            return "CONDUCTIVITY";
-        case ControlAll:
-            return "CONTROL_ALL";
-        case Control0:
-            return "CONTROL0";
-        case Control1:
-            return "CONTROL1";
-        case Control2:
-            return "CONTROL2";
-        case DateTime:
-            return "DATETIME";
-        case Invalid:
+        case DataType::SensorHumidity:
+            return "Humid";
+        case DataType::SensorConductivity:
+            return "Conduct";
+        case DataType::ControlAll:
+            return "CtrlAll";
+        case DataType::Control0:
+            return "Control0";
+        case DataType::Control1:
+            return "Control1";
+        case DataType::Control2:
+            return "Control2";
+        case DataType::DateTime:
+            return "DateTime";
         default:
             return "-";
         }
     }
 
-    string getCurrentTime()
+    String getCurrentTime()
     {
         char sResult[32] = {
             0,
@@ -73,7 +45,7 @@ namespace UartMessageInterface
         return sResult;
     }
 
-    uint8_t getCheckSum(const string &message)
+    uint8_t getCheckSum(const String &message)
     {
         uint8_t sum = 0;
         for (const char &c : message)
@@ -87,12 +59,26 @@ namespace UartMessageInterface
         return checkSum;
     }
 
-    void appendCheckSum(string &message)
+    uint8_t getCheckSum(const uint8_t* str, size_t strSize)
     {
-        message.push_back((char)getCheckSum(message));
+        uint8_t sum = 0;
+        for(size_t idx = 0 ; idx < strSize ; idx++)
+        {
+            sum = sum + str[idx];
+        }
+
+        uint8_t checkSum = (sum ^ 0xFF) + 1;
+
+        // cout << "CheckSum : " << (int)checkSum << endl;
+        return checkSum;
     }
 
-    bool verityCheckSum(const string &message)
+    void appendCheckSum(String &message)
+    {
+        message += ((char)getCheckSum(message));
+    }
+
+    bool verityCheckSum(const String &message)
     {
         uint8_t sum = 0;
         for (const char &c : message)
@@ -102,6 +88,16 @@ namespace UartMessageInterface
 
         // cout << "Verity : " << (sum == 0) << endl;
         return (sum == 0);
+    }
+
+    void writeEndian(ResponseGetData* data)
+    {
+        data->value = htonl(data->value);
+    }
+
+    void readEndian(ResponseGetData* data)
+    {
+        data->value = ntohl(data->value);
     }
 
 }; // namespace UartMessageInterface

@@ -1,46 +1,49 @@
 #ifndef _UART_MESSAGE_CALL_BACK_MANAGEMENT_H_
 #define _UART_MESSAGE_CALL_BACK_MANAGEMENT_H_
 
-#include <string>
-#include <ctime>
-#include <functional>
-#include <map>
-#include "tinyxml2.h"
+#include <Arduino.h>
 #include "UartMessageInterface.h"
-
-using namespace std;
-using namespace tinyxml2;
 
 namespace UartMessageInterface
 {
-
     class UartMessageCallbackManagement
     {
     public:
-        typedef function<void(eDataType, const string &)> CallBackRequestGet;
-        typedef function<void(eDataType, const string &, const Value &)> CallBackResponseGet;
-        typedef function<void(eDataType, const string &, uint32_t)> CallBackSubscribe;
-        typedef function<void(eDataType, const string &)> CallBackUnsubscribe;
-
-        static void registerRequestGetCallBack(eDataType type, const string &name, const CallBackRequestGet &func);
-        static void invokeRequestGetCallBack(eDataType type, const string &name);
-        static void registerResponseGetCallBack(eDataType type, const string &name, const CallBackResponseGet &func);
-        static void invokeResponseGetCallBack(eDataType type, const string &name, const Value &value);
-        static void registerSubscribeCallBack(CallBackSubscribe &func);
-        static void invokeSubscribeCallBack(eDataType type, const string &name, uint32_t period);
-        static void registerUnsubscribeCallBack(CallBackUnsubscribe &func);
-        static void invokeUnsubscribeCallBack(eDataType type, const string &name);
+        typedef void(*CallBackRequestGet)(uint32_t /*seqId*/, const RequestGetData* /*dataArr*/, size_t /*arrSize*/);
+        typedef void(*CallBackResponseGet)(uint32_t /*seqId*/, const ResponseGetData* /*dataArr*/, size_t /*arrSize*/);
+        typedef void(*CallBackNotification)(uint32_t /*seqId*/, const NotificationData* /*dataArr*/, size_t /*arrSize*/);
+        typedef void(*CallBackSubscribe)(uint32_t /*seqId*/, const SubscribeData* /*dataArr*/, size_t /*arrSize*/);
+        typedef void(*CallBackUnsubscribe)(uint32_t /*seqId*/, const UnsubscribeData* /*dataArr*/, size_t /*arrSize*/);
+        typedef void(*CallBackRequestSet)(uint32_t /*seqId*/, const RequestSetData* /*dataArr*/, size_t /*arrSize*/);
+        typedef void(*CallBackAcknowledge)(uint32_t /*seqId*/, unsigned char /*msgId*/);
+        
+        static void registerRequestGetCallBack(const CallBackRequestGet func);
+        static void invokeRequestGetCallBack(uint32_t seqId, const RequestGetData* dataArr, size_t arrSize);
+        static void registerResponseGetCallBack(const CallBackResponseGet func);
+        static void invokeResponseGetCallBack(uint32_t seqId, const ResponseGetData* dataArr, size_t arrSize);
+        static void registerNotificationCallBack(const CallBackNotification func);
+        static void invokeNotificationCallBack(uint32_t seqId, const NotificationData* dataArr, size_t arrSize);
+        static void registerSubscribeCallBack(const CallBackSubscribe func);
+        static void invokeSubscribeCallBack(uint32_t seqId, const SubscribeData* dataArr, size_t arrSize);
+        static void registerUnsubscribeCallBack(const CallBackUnsubscribe func);
+        static void invokeUnsubscribeCallBack(uint32_t seqId, const UnsubscribeData* dataArr, size_t arrSize);
+        static void registerRequestSetCallBack(const CallBackRequestSet func);
+        static void invokeRequestSetCallBack(uint32_t seqId, const RequestSetData* dataArr, size_t arrSize);
+        static void registerAcknowledgeCallBack(const CallBackAcknowledge func);
+        static void invokeAcknowledgeCallBack(uint32_t seqId, unsigned char msgId);
 
     private:
         static UartMessageCallbackManagement *_Instance;
         static UartMessageCallbackManagement &getInstance();
+        UartMessageCallbackManagement();
 
-        typedef map<tuple<eDataType, string>, CallBackRequestGet> CallBackListRequestGet;
-        CallBackListRequestGet _callBackListRequestGet;
-        typedef map<tuple<eDataType, string>, CallBackResponseGet> CallBackListResponseGet;
-        CallBackListResponseGet _callBackListResponseGet;
+        CallBackRequestGet _callBackRequestGet;
+        CallBackResponseGet _callBackResponseGet;
+        CallBackNotification _callBackNotification;
         CallBackSubscribe _callBackSubscribe;
         CallBackUnsubscribe _callBackUnsubscribe;
+        CallBackRequestSet _callBackRequestSet;
+        CallBackAcknowledge _callBackAcknowledge;
     };
 
 
