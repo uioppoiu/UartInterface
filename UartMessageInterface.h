@@ -47,6 +47,7 @@ namespace UartMessageInterface
         static const uint8_t SensorCO2 = 0x01;
         static const uint8_t SensorHumidity = 0x02;
         static const uint8_t SensorConductivity = 0x03;
+        static const uint8_t SensorPH = 0x04;
         static const uint8_t ControlAll = 0x1F;
         static const uint8_t Control0 = 0x10;
         static const uint8_t Control1 = 0x11;
