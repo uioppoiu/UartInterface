@@ -17,13 +17,15 @@ namespace UartMessageInterface
     typedef struct
     {
         uint8_t type;
-        char name[11];
+        uint8_t reserved[3];
+        // char name[11];
     } RequestGetData, SubscribeData, UnsubscribeData;
 
     typedef struct
     {
         uint8_t type;
-        char name[11];
+        uint8_t reserved[3];
+        // char name[11];
         uint32_t value;
     } ResponseGetData, RequestSetData, NotificationData;
 
@@ -43,11 +45,12 @@ namespace UartMessageInterface
     {
     public:
         static const uint8_t SensorAll = 0x0F;
-        static const uint8_t SensorTemperature = 0x00;
+        static const uint8_t SensorRoomTemperature = 0x00;
         static const uint8_t SensorCO2 = 0x01;
         static const uint8_t SensorHumidity = 0x02;
         static const uint8_t SensorConductivity = 0x03;
         static const uint8_t SensorPH = 0x04;
+        static const uint8_t SensorWaterTemperature = 0x05;
         static const uint8_t ControlAll = 0x1F;
         static const uint8_t Control0 = 0x10;
         static const uint8_t Control1 = 0x11;

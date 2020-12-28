@@ -10,8 +10,10 @@ namespace UartMessageInterface
         {
         case DataType::SensorAll:
             return "SensAll";
-        case DataType::SensorTemperature:
-            return "Temp";
+        case DataType::SensorRoomTemperature:
+            return "TempRoom";
+        case DataType::SensorWaterTemperature:
+            return "TempWater";
         case DataType::SensorCO2:
             return "CO2";
         case DataType::SensorHumidity:

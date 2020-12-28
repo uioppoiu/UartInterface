@@ -20,10 +20,10 @@ namespace UartMessageInterface
         const uint32_t seqId = ntohl(msgHeader->seqId);
         const uint8_t numOfData = msgHeader->numOfData; // 데이터의 수
 
-        Serial.print("MsgId:0x");
-        Serial.print(msgId,16);
-        Serial.print(" SeqId:");
-        Serial.println(seqId);
+        // Serial.print("MsgId:0x");
+        // Serial.print(msgId,16);
+        // Serial.print(" SeqId:");
+        // Serial.println(seqId);
 
         switch (msgId)
         {
